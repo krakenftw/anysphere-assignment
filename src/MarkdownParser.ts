@@ -51,7 +51,7 @@ git push origin build-todesktop
 - Go to todesktop.com, test the build locally and hit release
 `;
 
-let currentContainer: HTMLElement | null = null; 
+let currentContainer: HTMLElement | null = null;
 // Do not edit this method
 function runStream() {
     currentContainer = document.getElementById('markdownContainer')!;
@@ -79,14 +79,79 @@ function runStream() {
 
 // dont be afraid of using globals for state
 
+function handleAddInlineBlock() {
+}
 /*YOUR CODE HERE
 this does token streaming with no styling right now
 your job is to write the parsing logic to make the styling work
  */
-function addToken(token: string) {
-    if(!currentContainer) return;
 
-    const span = document.createElement('span');
-    span.innerText = token;
-    currentContainer.appendChild(span);
+
+let globalBackTicks = 0;
+let isInBlock = false;
+let isInInline = false;
+let backtickBuffer = ''; 
+let tempContent = '';
+let blockDiv:HTMLDivElement|null = null;
+
+function addToken(token: string) {
+    if (!currentContainer) return;
+
+    for (let char of token) {
+        if (char === "#") {
+            let headingLevel = 0;
+            while (token[headingLevel] === "#") {
+                headingLevel++;
+            }
+            const heading = document.createElement(`h${headingLevel}`);
+            heading.innerText = token.slice(headingLevel).trim();
+            currentContainer.appendChild(heading);
+        } else if (char === "`") {
+            globalBackTicks++;
+            
+            if (globalBackTicks === 3) {
+                if (blockDiv !== null) {
+                    blockDiv = null;
+                } else {
+                    blockDiv = document.createElement('div');
+                    blockDiv.style.backgroundColor = 'lightgray';
+                    blockDiv.style.padding = '10px';
+                    blockDiv.style.borderRadius = '5px';
+                    currentContainer.appendChild(blockDiv);
+                }
+                globalBackTicks = 0; 
+            }
+        } else if (char === "*") {
+            if (isInInline) {
+                isInInline = false;
+                const inlineSpan = document.createElement('span');
+                inlineSpan.innerText = backtickBuffer;
+                inlineSpan.style.fontWeight = 'bold';
+                currentContainer.appendChild(inlineSpan);
+                backtickBuffer = '';
+            } else {
+                isInInline = true;
+            }
+        } else {
+            if (blockDiv !== null) {
+                tempContent += char;
+            } else if (isInInline) {
+                backtickBuffer += char;
+            } else {
+                const span = document.createElement('span');
+                if(globalBackTicks==1){
+                    span.style.backgroundColor = 'lightgray';
+                }
+                span.innerText = char;
+                currentContainer.appendChild(span);
+            }
+        }
+    }
+
+    if (blockDiv !== null && tempContent) {
+        const blockSpan = document.createElement('span');
+        blockSpan.innerText = tempContent;
+        blockDiv.appendChild(blockSpan);
+        tempContent = '';
+    }
 }
